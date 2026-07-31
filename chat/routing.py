@@ -1,6 +1,6 @@
-from django.urls import re_path
-from . import consumers
+from .presence_consumer import PresenceConsumer
 
 websocket_urlpatterns = [
-    re_path(r'^ws/chat/(?P<username>[\w.@+-]+)/$', consumers.ChatConsumer.as_asgi()),
+    path("ws/chat/<str:username>/", ChatConsumer.as_asgi()),   # ye already hoga
+    path("ws/presence/", PresenceConsumer.as_asgi()),           # ye naya add karo
 ]
