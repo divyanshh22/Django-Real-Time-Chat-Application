@@ -29,6 +29,21 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() in ['true', '1', 'yes']
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# Render deploys behind an HTTPS proxy — without this, Django thinks
+# incoming requests are plain HTTP and CSRF's "same-origin/scheme" check fails.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# CSRF needs the exact HTTPS origin(s) your site is served from.
+# Render gives you RENDER_EXTERNAL_HOSTNAME automatically at runtime,
+# so this stays correct even if you rename the service or add a custom domain.
+CSRF_TRUSTED_ORIGINS = [
+    'https://django-chat-application-71vb.onrender.com',
+]
+
+render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if render_external_hostname:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{render_external_hostname}')
+
 
 # Application definition
 
@@ -155,7 +170,3 @@ LOGIN_REDIRECT_URL = 'chat:home-view'
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-
-
