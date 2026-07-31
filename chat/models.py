@@ -1,18 +1,11 @@
-# chat/models.py
 from django.db import models
-from login.models import CustomUser   # your custom user model
+from login.models import CustomUser
 
 class Message(models.Model):
-    sender = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name='sent_messages'
-    )
-    receiver = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name='received_messages'
-    )
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_messages')
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_messages')
     text = models.TextField(blank=True)
-    photo = models.ImageField(
-        upload_to='chat_images/', blank=True, null=True   # ← Cloudinary will store here
-    )
+    photo = models.ImageField(upload_to='chat_images/', blank=True, null=True)  # ← ye fix kar
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 
