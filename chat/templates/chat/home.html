@@ -1,6 +1,5 @@
 {% extends 'login/base.html' %}
 {% block title %}Chats{% endblock %}
-
 {% block content %}
 <div class="card" style="max-width:500px;">
   
@@ -11,12 +10,11 @@
       <button type="submit" style="width:auto;padding:12px 16px;">🔍</button>
     </div>
   </form>
-
   <h2 style="margin-bottom:16px;font-size:1rem;color:var(--muted);">YOUR CHATS</h2>
-
   {% if chat_users %}
     {% for user in chat_users %}
     <a href="{% url 'chat:conversation-view' user.username %}" 
+       data-user-id="{{ user.id }}"
        style="text-decoration:none;display:flex;align-items:center;gap:12px;
               padding:12px;border-radius:10px;border:1px solid var(--border);
               margin-bottom:10px;background:var(--bg);">
@@ -35,20 +33,18 @@
         </div>
       {% endif %}
         <!-- Online status dot -->
-        <span class="status-dot"
+        <span class="status-dot" id="dot-{{ user.id }}"
               style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);
                      {% if user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
               title="{% if user.is_online %}Online{% else %}Last seen {{ user.last_seen_str|date:'M d, H:i' }}{% endif %}"></span>
       </div>
-
       <!-- User Info -->
       <div style="flex:1;min-width:0;">
         <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ user.username }}</div>
         <div style="color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ user.first_name }} {{ user.last_name }}</div>
       </div>
-
       <!-- Online status text -->
-      <div style="font-size:11px;color:var(--muted);white-space:nowrap;">
+      <div id="status-text-{{ user.id }}" style="font-size:11px;color:var(--muted);white-space:nowrap;">
         {% if user.is_online %}● Online{% else %}Last seen {{ user.last_seen_str|date:'M d, H:i' }}{% endif %}
       </div>
     </a>
@@ -58,6 +54,48 @@
       <div style="color:var(--muted);font-size:14px;">No chats yet — search a user to start! 👆</div>
     </div>
   {% endif %}
-
 </div>
+
+<script>
+(function() {
+    const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+    const presenceSocket = new WebSocket(protocol + window.location.host + "/ws/presence/");
+
+    presenceSocket.onopen = function() {
+        const userIds = [{% for user in chat_users %}{{ user.id }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        presenceSocket.send(JSON.stringify({ type: "get_status", user_ids: userIds }));
+    };
+
+    presenceSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+
+        if (data.type === "presence_update") {
+            updateUserStatus(data.user_id, data.status, data.last_seen);
+        }
+
+        if (data.type === "bulk_status") {
+            for (const [userId, info] of Object.entries(data.statuses)) {
+                updateUserStatus(userId, info.status, info.last_seen);
+            }
+        }
+    };
+
+    presenceSocket.onerror = function(err) {
+        console.error("Presence socket error:", err);
+    };
+
+    function updateUserStatus(userId, status, lastSeen) {
+        const dot = document.getElementById("dot-" + userId);
+        const text = document.getElementById("status-text-" + userId);
+
+        if (dot) {
+            dot.style.background = (status === "online") ? "#4ade80" : "#9ca3af";
+            dot.title = (status === "online") ? "Online" : ("Last seen " + (lastSeen || ""));
+        }
+        if (text) {
+            text.textContent = (status === "online") ? "● Online" : ("Last seen " + (lastSeen || ""));
+        }
+    }
+})();
+</script>
 {% endblock %}
