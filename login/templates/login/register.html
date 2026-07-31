@@ -1,0 +1,61 @@
+{% extends 'login/base.html' %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <h2>Create Account</h2>
+    <p class="sub">Join us today</p>
+
+    <!-- Show Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <p class="{{ message.tags }}">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>First Name</label>
+                <input type="text" name="first_name" required>
+            </div>
+            <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" name="last_name" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" required>
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password1" required>
+        </div>
+
+        <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" name="password2" required>
+        </div>
+
+        <button type="submit">Register</button>
+
+    </form>
+
+    <p>Already have an account? <a href="{% url 'login-view' %}">Login here</a></p>
+
+</div>
+
+{% endblock %}

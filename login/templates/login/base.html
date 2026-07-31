@@ -1,0 +1,206 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}MyApp{% endblock %}</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+:root{
+--bg:#0d0d0f;
+--surface:#161618;
+--border:#2a2a2e;
+--accent:#7c6dfa;
+--accent-soft:#a89dfc;
+--text:#f0eff5;
+--muted:#888794;
+--danger:#f96b6b;
+}
+
+body{
+font-family:'Sora',sans-serif;
+background:var(--bg);
+color:var(--text);
+min-height:100vh;
+}
+
+nav{
+height:62px;
+background:var(--surface);
+border-bottom:1px solid var(--border);
+padding:0 2rem;
+display:flex;
+align-items:center;
+justify-content:space-between;
+}
+
+.nav-brand{
+text-decoration:none;
+font-family:'Space Mono',monospace;
+font-size:1.1rem;
+color:var(--accent-soft);
+font-weight:700;
+}
+
+.nav-brand span{
+color:var(--accent);
+}
+
+.nav-links{
+display:flex;
+gap:10px;
+align-items:center;
+}
+
+.nav-links a{
+text-decoration:none;
+padding:8px 14px;
+border-radius:8px;
+font-size:14px;
+}
+
+.btn-primary{
+background:var(--accent);
+color:white;
+}
+
+.btn-ghost{
+color:var(--muted);
+}
+
+.btn-danger{
+border:1px solid var(--danger);
+color:var(--danger);
+}
+
+main{
+min-height:calc(100vh - 62px);
+display:flex;
+justify-content:center;
+align-items:center;
+padding:2rem;
+}
+
+.card{
+width:100%;
+max-width:420px;
+background:var(--surface);
+border:1px solid var(--border);
+border-radius:16px;
+padding:2rem;
+}
+
+input{
+width:100%;
+padding:12px;
+background:var(--bg);
+border:1px solid var(--border);
+border-radius:8px;
+color:white;
+margin-top:6px;
+}
+
+label{
+font-size:14px;
+color:var(--muted);
+}
+
+.form-group{
+margin-bottom:16px;
+}
+
+button{
+width:100%;
+padding:12px;
+border:none;
+border-radius:8px;
+background:var(--accent);
+color:white;
+cursor:pointer;
+font-weight:600;
+}
+
+.grid-2{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:12px;
+}
+
+.center{
+text-align:center;
+}
+
+.sub{
+color:var(--muted);
+margin-bottom:20px;
+font-size:14px;
+}
+
+/* Nav profile pic */
+.nav-avatar{
+width:34px;
+height:34px;
+border-radius:50%;
+object-fit:cover;
+border:2px solid var(--accent);
+}
+
+.nav-avatar-placeholder{
+width:34px;
+height:34px;
+border-radius:50%;
+background:var(--accent);
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:700;
+color:white;
+font-size:14px;
+}
+</style>
+
+</head>
+<body>
+
+<nav>
+  <a href="{% url 'home-view' %}" class="nav-brand"><span>//</span> MyApp</a>
+
+  <div class="nav-links">
+    {% if user.is_authenticated %}
+      <!-- Chat Link -->
+      <a href="{% url 'chat:home-view' %}" class="btn-ghost">💬 Chats</a>
+
+      <!-- Profile Link with pic -->
+      <a href="{% url 'profile-view' %}" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--muted);padding:4px 10px;border-radius:8px;">
+        {% if user.profilepic.profile_pic %}
+          <img src="{{ user.profilepic.profile_pic.url }}" class="nav-avatar">
+        {% else %}
+          <div class="nav-avatar-placeholder">{{ user.username|first|upper }}</div>
+        {% endif %}
+        <span style="font-size:14px;">{{ user.username }}</span>
+      </a>
+
+      <a href="{% url 'logout-view' %}" class="btn-danger">Logout</a>
+    {% else %}
+      <a href="{% url 'login-view' %}" class="btn-ghost">Login</a>
+      <a href="{% url 'register-view' %}" class="btn-primary">Register</a>
+    {% endif %}
+  </div>
+</nav>
+
+<main>
+{% block content %}
+{% endblock %}
+</main>
+
+</body>
+</html>

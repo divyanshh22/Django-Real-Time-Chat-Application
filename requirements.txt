@@ -1,0 +1,13 @@
+asgiref>=3.8.1
+autobahn>=23.6.2
+channels>=4.0.0
+daphne>=4.1.0
+dj-database-url>=2.1.0
+Django>=5.0.0
+gunicorn>=22.0.0
+pillow>=10.0.0
+psycopg2-binary>=2.9.9
+redis>=5.0.0
+requests>=2.31.0
+sqlparse>=0.5.0
+whitenoise>=6.6.0

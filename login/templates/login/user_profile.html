@@ -1,0 +1,60 @@
+{% extends 'login/base.html' %}
+{% block title %}{{ profile_user.username }}'s Profile{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:420px;">
+
+  <!-- Profile Pic -->
+  <div class="center" style="margin-bottom:20px;">
+    {% if profile.profile_pic %}
+      <img src="{{ profile.profile_pic.url }}"
+           style="width:100px;height:100px;border-radius:50%;object-fit:cover;
+                  border:3px solid var(--accent);">
+    {% else %}
+      <div style="width:100px;height:100px;border-radius:50%;
+                  background:var(--accent);display:flex;
+                  align-items:center;justify-content:center;
+                  font-size:2.5rem;font-weight:700;color:white;margin:auto;">
+        {{ profile_user.username|first|upper }}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- User Info -->
+  <div style="text-align:center;margin-bottom:24px;">
+    <h2 style="font-size:1.4rem;margin-bottom:4px;">{{ profile_user.username }}</h2>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:4px;">
+      {{ profile_user.first_name }} {{ profile_user.last_name }}
+    </p>
+    <p style="color:var(--muted);font-size:13px;">
+      {{ profile_user.email }}
+    </p>
+  </div>
+
+  <!-- Joined Date -->
+  <div style="background:var(--bg);border:1px solid var(--border);
+              border-radius:10px;padding:14px;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:var(--muted);font-size:13px;">Joined</span>
+      <span style="font-size:13px;color:var(--accent-soft);">
+        {{ profile.joined_date|date:"d M, Y" }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div style="display:flex;gap:10px;">
+    <a href="{% url 'chat:conversation-view' profile_user.username %}"
+       style="flex:1;padding:12px;border-radius:8px;background:var(--accent);
+              color:white;text-decoration:none;text-align:center;font-weight:600;">
+      💬 Send Message
+    </a>
+    <a href="javascript:history.back()"
+       style="padding:12px 16px;border-radius:8px;border:1px solid var(--border);
+              color:var(--muted);text-decoration:none;text-align:center;">
+      ← Back
+    </a>
+  </div>
+
+</div>
+{% endblock %}
