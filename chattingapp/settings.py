@@ -12,40 +12,41 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# ----------------------------------------------------------------------
-# SECURITY
-# ----------------------------------------------------------------------
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure--zvwsu%2&*9_+3l7(^y=*)(^+ekz7ft0heul37$_(fk7!0w7s$'
-)
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# DEBUG is controlled by an env var – set to "False" in production
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure--zvwsu%2&*9_+3l7(^y=*)(^+ekz7ft0heul37$_(fk7!0w7s$')
+
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ['true', '1', 'yes']
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-# Render terminates TLS at the load balancer – tell Django to trust the
-# X-Forwarded-Proto header so CSRF sees requests as HTTPS.
+# Render deploys behind an HTTPS proxy — without this, Django thinks
+# incoming requests are plain HTTP and CSRF's "same-origin/scheme" check fails.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# CSRF trusted origins – we add the Render hostname dynamically.
+# CSRF needs the exact HTTPS origin(s) your site is served from.
+# Render gives you RENDER_EXTERNAL_HOSTNAME automatically at runtime,
+# so this stays correct even if you rename the service or add a custom domain.
 CSRF_TRUSTED_ORIGINS = [
     'https://django-chat-application-71vb.onrender.com',
 ]
+
 render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if render_external_hostname:
     CSRF_TRUSTED_ORIGINS.append(f'https://{render_external_hostname}')
 
 
-# ----------------------------------------------------------------------
-# APPLICATIONS
-# ----------------------------------------------------------------------
+# Application definition
+
 INSTALLED_APPS = [
     'daphne',
     'django.contrib.admin',
@@ -59,19 +60,9 @@ INSTALLED_APPS = [
     'channels',
 ]
 
-# Cloudinary storage is only needed when the env vars are present.
-# We add the apps conditionally so local dev (without Cloudinary) stays clean.
-if os.environ.get('CLOUDINARY_CLOUD_NAME'):
-    INSTALLED_APPS.insert(0, 'cloudinary_storage')   # must come before staticfiles
-    INSTALLED_APPS.append('cloudinary')
-
-
-# ----------------------------------------------------------------------
-# MIDDLEWARE
-# ----------------------------------------------------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',   # serves static files in prod
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -80,42 +71,36 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
-# ----------------------------------------------------------------------
-# URL / WSGI / ASGI
-# ----------------------------------------------------------------------
 ROOT_URLCONF = 'chattingapp.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
 WSGI_APPLICATION = 'chattingapp.wsgi.application'
 ASGI_APPLICATION = 'chattingapp.asgi.application'
 
+# Channels Configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
-# ----------------------------------------------------------------------
-# CHANNELS (USE REDIS IN PRODUCTION, IN-MEMORY ONLY FOR LOCAL DEV)
-# ----------------------------------------------------------------------
-# In production Render provides a REDIS_URL via the Redis add‑on.
-# If the variable is missing we fall back to the in‑memory layer (useful for
-# local development where you might not have Redis running).
-if os.environ.get('REDIS_URL'):
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                'hosts': [os.environ.get('REDIS_URL')],
-            },
-        },
-    }
-else:
-    # Local dev fallback – **do NOT use in production!**
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
-    }
+# Database
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-
-# ----------------------------------------------------------------------
-# DATABASE (uses DATABASE_URL from Render Postgres add‑on)
-# ----------------------------------------------------------------------
 DATABASES = {
     'default': dj_database_url.config(
         default='postgres://postgres:Hitman%404165@localhost:5432/newchatdb',
@@ -126,10 +111,9 @@ DATABASES = {
 
 AUTH_USER_MODEL = 'login.CustomUser'
 
+# Password validation
+# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
-# ----------------------------------------------------------------------
-# PASSWORD VALIDATION
-# ----------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -146,52 +130,43 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# ----------------------------------------------------------------------
-# INTERNATIONALIZATION
-# ----------------------------------------------------------------------
+# Internationalization
+# https://docs.djangoproject.com/en/6.0/topics/i18n/
+
 LANGUAGE_CODE = 'en-us'
+
 TIME_ZONE = 'UTC'
+
 USE_I18N = True
+
 USE_TZ = True
 
 
-# ----------------------------------------------------------------------
-# STATIC FILES (CSS, JavaScript, Images)
-# ----------------------------------------------------------------------
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/6.0/howto/static-files/
+
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-# Use WhiteNoise for efficient static file serving in production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
-# ----------------------------------------------------------------------
-# MEDIA FILES (USER‑UPLOADED CONTENT)
-# ----------------------------------------------------------------------
-# We switch between Cloudinary (production) and local storage (dev)
-# based on the presence of CLOUDINARY_CLOUD_NAME.
+# Cloudinary Configuration for Media Uploads in Production
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY', ''),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
+}
+
 if os.environ.get('CLOUDINARY_CLOUD_NAME'):
-    # -------- PRODUCTION: CLOUDINARY ----------
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
-        'API_KEY':    os.environ.get('CLOUDINARY_API_KEY'),
-        'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
-    }
-    # Tell Django to use Cloudinary for ALL file uploads
+    INSTALLED_APPS.insert(0, 'cloudinary_storage')
+    INSTALLED_APPS.append('cloudinary')
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-else:
-    # -------- LOCAL DEVELOPMENT: LOCAL FILESYSTEM ----------
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
 
-
-# ----------------------------------------------------------------------
-# AUTHENTICATION REDIRECTS
-# ----------------------------------------------------------------------
 LOGIN_URL = 'login-view'
 LOGIN_REDIRECT_URL = 'chat:home-view'
 
-
-# ----------------------------------------------------------------------
-# DEFAULT PRIMARY KEY FIELD
-# ----------------------------------------------------------------------
+# Default primary key field type
+# https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
