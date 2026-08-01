@@ -11,10 +11,12 @@
     </div>
   </form>
   <h2 style="margin-bottom:16px;font-size:1rem;color:var(--muted);">YOUR CHATS</h2>
+  <div id="chat-list">
   {% if chat_users %}
     {% for user in chat_users %}
     <a href="{% url 'chat:conversation-view' user.username %}" 
        data-user-id="{{ user.id }}"
+       class="chat-user-row"
        style="text-decoration:none;display:flex;align-items:center;gap:12px;
               padding:12px;border-radius:10px;border:1px solid var(--border);
               margin-bottom:10px;background:var(--bg);">
@@ -31,25 +33,23 @@
             {{ user.username|first|upper }}
           </div>
         {% endif %}
-        <span class="status-dot" id="dot-{{ user.id }}"
+        <span class="status-dot chat-presence-dot" id="dot-{{ user.id }}"
               style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);
                      {% if user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
-              title="{% if user.is_online %}Online{% else %}Last seen {{ user.last_seen_str|date:'M d, H:i' }}{% endif %}"></span>
+              title="{% if user.is_online %}Online{% else %}Offline{% endif %}"></span>
       </div>
 
       <div style="flex:1;min-width:0;">
-        <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ user.username }}</div>
-        <div style="color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        <div class="chat-user-name" style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ user.username }}</div>
+        <div class="chat-user-preview" style="color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
           {% if user.last_message_preview %}{{ user.last_message_preview }}{% else %}Start a conversation{% endif %}
         </div>
       </div>
 
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-        {% if user.unread_count %}
-          <span style="background:#3b82f6;color:#ffffff;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:700;min-width:20px;text-align:center;">
-            {{ user.unread_count }}
-          </span>
-        {% endif %}
+        <span class="chat-unread-badge" style="background:#3b82f6;color:#ffffff;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:700;min-width:20px;text-align:center;{% if not user.unread_count %}display:none;{% endif %}">
+          {{ user.unread_count }}
+        </span>
       </div>
     </a>
     {% endfor %}
@@ -58,12 +58,14 @@
       <div style="color:var(--muted);font-size:14px;">No chats yet — search a user to start! 👆</div>
     </div>
   {% endif %}
+  </div>
 </div>
 
 <script>
 (function() {
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
     const presenceSocket = new WebSocket(protocol + window.location.host + "/ws/presence/");
+    const inboxApiUrl = '{% url "chat:home-inbox-api" %}';
 
     presenceSocket.onopen = function() {
         const userIds = [{% for user in chat_users %}{{ user.id }}{% if not forloop.last %},{% endif %}{% endfor %}];
@@ -96,6 +98,65 @@
             dot.title = (status === "online") ? "Online" : "Offline";
         }
     }
+
+    function toInitials(username) {
+        return (username || '').split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+    }
+
+    function renderInbox(users) {
+        const container = document.getElementById('chat-list');
+        if (!container) {
+            return;
+        }
+
+        if (!users.length) {
+            container.innerHTML = '<div class="center" style="padding:2rem;"><div style="color:var(--muted);font-size:14px;">No chats yet — search a user to start! 👆</div></div>';
+            return;
+        }
+
+        container.innerHTML = users.map(user => {
+            const profileMarkup = user.profile_pic_url
+                ? `<img src="${user.profile_pic_url}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">`
+                : `<div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">${toInitials(user.username)}</div>`;
+
+            const unreadMarkup = user.unread_count > 0
+                ? `<span class="chat-unread-badge" style="background:#3b82f6;color:#ffffff;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:700;min-width:20px;text-align:center;">${user.unread_count}</span>`
+                : `<span class="chat-unread-badge" style="display:none;"></span>`;
+
+            return `
+                <a href="${user.conversation_url}" data-user-id="${user.id}" class="chat-user-row" style="text-decoration:none;display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;background:var(--bg);">
+                    <div style="position:relative;">
+                        ${profileMarkup}
+                        <span class="status-dot chat-presence-dot" id="dot-${user.id}" style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);background:${user.is_online ? '#4ade80' : '#9ca3af'};" title="${user.is_online ? 'Online' : 'Offline'}"></span>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div class="chat-user-name" style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${user.username}</div>
+                        <div class="chat-user-preview" style="color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${user.preview || 'Start a conversation'}</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                        ${unreadMarkup}
+                    </div>
+                </a>
+            `;
+        }).join('');
+    }
+
+    async function refreshInbox() {
+        try {
+            const response = await fetch(inboxApiUrl);
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            renderInbox(data.users || []);
+        } catch (error) {
+            console.error('Inbox refresh failed', error);
+        }
+    }
+
+    refreshInbox();
+    setInterval(refreshInbox, 5000);
 })();
 </script>
 {% endblock %}

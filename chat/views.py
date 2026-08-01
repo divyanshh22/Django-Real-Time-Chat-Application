@@ -11,49 +11,7 @@ import redis
 from datetime import datetime
 
 
-def get_room_group_name(user_id_1, user_id_2):
-    return f"chat_{min(user_id_1, user_id_2)}_{max(user_id_1, user_id_2)}"
-
-
-def get_user_presence(user_id):
-    user = CustomUser.objects.filter(id=user_id).first()
-    if user:
-        return bool(user.is_online), user.last_seen.isoformat() if user.last_seen else None
-
-    try:
-        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
-        is_online = r.hget('online_users', str(user_id)) == 'online'
-        last_seen = r.hget('last_seen', str(user_id))
-        return is_online, last_seen
-    except Exception:
-        return False, None
-
-
-def set_user_presence(user_id, is_online, last_seen=None):
-    try:
-        CustomUser.objects.filter(id=user_id).update(
-            is_online=is_online,
-            last_seen=last_seen if not is_online else None,
-        )
-    except Exception:
-        pass
-
-    try:
-        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
-        if is_online:
-            r.hset('online_users', str(user_id), 'online')
-            r.hdel('last_seen', str(user_id))
-        else:
-            r.hdel('online_users', str(user_id))
-            if last_seen is None:
-                last_seen = datetime.utcnow().isoformat()
-            r.hset('last_seen', str(user_id), last_seen)
-    except Exception:
-        pass
-
-
-@login_required(login_url='login-view')
-def home_view(request):
+def _build_home_inbox_context(request):
     ProfilePic.objects.get_or_create(user=request.user)
 
     all_messages = Message.objects.filter(
@@ -99,9 +57,72 @@ def home_view(request):
         user.is_online = online_users.get(str(user.id)) == 'online' or user.is_online
         user.last_seen_str = last_seen.get(str(user.id)) or user.last_seen
 
-    return render(request, 'chat/home.html', {
-        'chat_users': chat_users,
-    })
+    return {'chat_users': chat_users}
+
+
+def get_room_group_name(user_id_1, user_id_2):
+    return f"chat_{min(user_id_1, user_id_2)}_{max(user_id_1, user_id_2)}"
+
+
+def get_user_presence(user_id):
+    user = CustomUser.objects.filter(id=user_id).first()
+    if user:
+        return bool(user.is_online), user.last_seen.isoformat() if user.last_seen else None
+
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
+        is_online = r.hget('online_users', str(user_id)) == 'online'
+        last_seen = r.hget('last_seen', str(user_id))
+        return is_online, last_seen
+    except Exception:
+        return False, None
+
+
+def set_user_presence(user_id, is_online, last_seen=None):
+    try:
+        CustomUser.objects.filter(id=user_id).update(
+            is_online=is_online,
+            last_seen=last_seen if not is_online else None,
+        )
+    except Exception:
+        pass
+
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
+        if is_online:
+            r.hset('online_users', str(user_id), 'online')
+            r.hdel('last_seen', str(user_id))
+        else:
+            r.hdel('online_users', str(user_id))
+            if last_seen is None:
+                last_seen = datetime.utcnow().isoformat()
+            r.hset('last_seen', str(user_id), last_seen)
+    except Exception:
+        pass
+
+
+@login_required(login_url='login-view')
+def home_view(request):
+    context = _build_home_inbox_context(request)
+    return render(request, 'chat/home.html', context)
+
+
+@login_required(login_url='login-view')
+@require_http_methods(["GET"])
+def home_inbox_api(request):
+    context = _build_home_inbox_context(request)
+    payload = []
+    for user in context['chat_users']:
+        payload.append({
+            'id': user.id,
+            'username': user.username,
+            'preview': user.last_message_preview,
+            'unread_count': user.unread_count,
+            'is_online': user.is_online,
+            'profile_pic_url': user.profilepic.profile_pic.url if getattr(user.profilepic, 'profile_pic', None) else None,
+            'conversation_url': f"/chat/{user.username}/",
+        })
+    return JsonResponse({'users': payload})
 
 
 
