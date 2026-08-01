@@ -25,18 +25,14 @@
     {% endif %}
     </a>
 
-    <div style="flex:1;">
+    <div style="flex:1;display:flex;align-items:center;gap:8px;">
       <div style="font-weight:600;display:flex;align-items:center;gap:8px;">
         {{ other_user.username }}
-        <!-- Online status indicator -->
-        <span id="online-indicator" class="status-dot"
-              style="width:10px;height:10px;border-radius:50%;display:inline-block;
-                     {% if other_user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
-              title="{% if other_user.is_online %}Online{% else %}Last seen {{ other_user.last_seen_str|date:'M d, H:i' }}{% endif %}"></span>
       </div>
-      <div id="status-text" style="font-size:12px;color:var(--muted);">
-        {% if other_user.is_online %}Online{% else %}Last seen {{ other_user.last_seen_str|date:'M d, H:i' }}{% endif %}
-      </div>
+      <span id="online-indicator" class="status-dot"
+            style="width:10px;height:10px;border-radius:50%;display:inline-block;
+                   {% if other_user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
+            title="{% if other_user.is_online %}Online{% else %}Offline{% endif %}"></span>
     </div>
   </div>
 
@@ -133,7 +129,6 @@
   const typingIndicator = document.getElementById('typing-indicator');
   const typingText = document.getElementById('typing-text');
   const onlineIndicator = document.getElementById('online-indicator');
-  const statusText = document.getElementById('status-text');
   
   // Connect to WebSocket
   function connect() {
@@ -228,8 +223,7 @@
   function updateUserStatus(data) {
     const isOnline = data.status === 'online';
     onlineIndicator.style.background = isOnline ? '#4ade80' : '#9ca3af';
-    onlineIndicator.title = isOnline ? 'Online' : `Last seen ${formatTime(data.last_seen)}`;
-    statusText.textContent = isOnline ? 'Online' : `Last seen ${formatTime(data.last_seen)}`;
+    onlineIndicator.title = isOnline ? 'Online' : 'Offline';
   }
   
   function updateReadStatus(messageIds) {
