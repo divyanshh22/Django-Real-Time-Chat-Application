@@ -17,6 +17,7 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
+            ProfilePic.objects.get_or_create(user=user)
             messages.success(request, f"Welcome, {user.first_name}!")
             return redirect('chat:home-view')
         else:

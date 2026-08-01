@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-import redis
+from django.contrib.auth import get_user_model
 
 
 class PresenceConsumer(AsyncWebsocketConsumer):
@@ -58,33 +58,22 @@ class PresenceConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def set_online(self, user_id):
-        try:
-            r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True,
-                             socket_connect_timeout=1, socket_timeout=1)
-            r.hset('online_users', user_id, 'online')
-        except Exception:
-            pass
+        User = get_user_model()
+        User.objects.filter(id=user_id).update(is_online=True, last_seen=None)
 
     @database_sync_to_async
     def set_offline(self, user_id):
-        try:
-            r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True,
-                             socket_connect_timeout=1, socket_timeout=1)
-            r.hset('online_users', user_id, 'offline')
-            r.hset('last_seen', user_id, datetime.utcnow().isoformat())
-        except Exception:
-            pass
+        User = get_user_model()
+        User.objects.filter(id=user_id).update(is_online=False, last_seen=datetime.utcnow())
 
     @database_sync_to_async
     def get_statuses(self, user_ids):
-        try:
-            r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True,
-                             socket_connect_timeout=1, socket_timeout=1)
-            result = {}
-            for uid in user_ids:
-                status = r.hget('online_users', uid) or 'offline'
-                last_seen = r.hget('last_seen', uid)
-                result[str(uid)] = {"status": status, "last_seen": last_seen}
-            return result
-        except Exception:
-            return {}
+        User = get_user_model()
+        users = User.objects.filter(id__in=user_ids)
+        result = {}
+        for user in users:
+            result[str(user.id)] = {
+                "status": "online" if user.is_online else "offline",
+                "last_seen": user.last_seen.isoformat() if user.last_seen else None,
+            }
+        return result

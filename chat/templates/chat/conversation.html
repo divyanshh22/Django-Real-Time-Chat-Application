@@ -43,7 +43,7 @@
   <!-- Messages -->
   <div id="msg-box" style="height:420px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;">
     {% for msg in messages %}
-      <div class="message" data-message-id="{{ msg.id }}" style="display:flex;flex-direction:column;
+      <div class="message" data-message-id="{{ msg.id }}" data-sender-id="{{ msg.sender.id }}" style="display:flex;flex-direction:column;
                   align-items:{% if msg.sender == request.user %}flex-end{% else %}flex-start{% endif %};">
         
         {% if msg.photo %}
@@ -114,6 +114,7 @@
 <!-- WebSocket Chat Script -->
 <script>
   const currentUserId = {{ request.user.id }};
+  const currentUsername = '{{ request.user.username }}';
   const otherUsername = '{{ other_user.username }}';
   const otherUserId = {{ other_user.id }};
   const csrfToken = '{{ csrf_token }}';
@@ -201,6 +202,7 @@
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
     messageDiv.dataset.messageId = message.id;
+    messageDiv.dataset.senderId = message.sender_id;
     messageDiv.style.cssText = `display:flex;flex-direction:column;align-items:${isOwn ? 'flex-end' : 'flex-start'};`;
     
     let html = '';
@@ -208,11 +210,12 @@
       html += `<img src="${message.photo_url}" style="max-width:220px;border-radius:10px;cursor:pointer;" onclick="window.open(this.src)">`;
     }
     if (message.text) {
+      const tickText = isOwn ? (message.is_read ? '✓✓' : '✓') : '';
       html += `<div style="max-width:70%;padding:10px 14px;border-radius:12px;font-size:14px;
                       background:${isOwn ? 'var(--accent)' : 'var(--surface)'};
                       color:var(--text);border:1px solid var(--border);position:relative;">
                 ${message.text}
-                ${isOwn ? `<span class="read-status" style="font-size:10px;margin-left:8px;color:var(--muted);" data-message-id="${message.id}">✓</span>` : ''}
+                ${isOwn ? `<span class="read-status" style="font-size:10px;margin-left:8px;color:${message.is_read ? '#4ade80' : 'var(--muted)'};" data-message-id="${message.id}">${tickText}</span>` : ''}
                </div>`;
     }
     html += `<div style="font-size:11px;color:var(--muted);margin-top:4px;">${formatTime(message.timestamp)}</div>`;
@@ -240,6 +243,10 @@
   }
   
   function showTypingIndicator(data) {
+    if (data.username === currentUsername) {
+      return;
+    }
+
     if (data.is_typing) {
       typingText.textContent = `${data.username} is typing...`;
       typingIndicator.style.display = 'block';
@@ -288,17 +295,23 @@
     const messageIds = [];
     unreadMessages.forEach(el => {
       const id = el.dataset.messageId;
-      if (id) messageIds.push(parseInt(id));
+      const senderId = parseInt(el.dataset.senderId || '0', 10);
+      if (id && senderId !== currentUserId) {
+        messageIds.push(parseInt(id));
+      }
     });
-    
+
     if (messageIds.length > 0 && ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'read',
         message_ids: messageIds
       }));
-      
+
       unreadMessages.forEach(el => {
-        el.dataset.read = 'true';
+        const senderId = parseInt(el.dataset.senderId || '0', 10);
+        if (senderId !== currentUserId) {
+          el.dataset.read = 'true';
+        }
       });
     }
   }

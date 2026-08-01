@@ -20,3 +20,15 @@ class ChatMessageDeliveryTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Message.objects.filter(sender=self.sender, receiver=self.receiver, text='hello there').exists())
+
+    def test_home_page_shows_latest_message_preview_for_each_chat(self):
+        Message.objects.create(
+            sender=self.receiver,
+            receiver=self.sender,
+            text='last message preview',
+        )
+
+        response = self.client.get(reverse('chat:home-view'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'last message preview')

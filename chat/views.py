@@ -54,25 +54,38 @@ def set_user_presence(user_id, is_online, last_seen=None):
 
 @login_required(login_url='login-view')
 def home_view(request):
-    # current user ke saare messages
+    ProfilePic.objects.get_or_create(user=request.user)
+
     all_messages = Message.objects.filter(
         Q(sender=request.user) | Q(receiver=request.user)
-    )
+    ).select_related('sender', 'receiver').order_by('-timestamp')
 
-    # unique users nikaal jinse baat ki hai
     user_ids = set()
+    latest_message_by_user = {}
+    unread_count_by_user = {}
+
     for msg in all_messages:
         if msg.sender != request.user:
             user_ids.add(msg.sender.id)
+            latest_message_by_user[msg.sender.id] = msg
+            if not msg.is_read and msg.receiver == request.user:
+                unread_count_by_user[msg.sender.id] = unread_count_by_user.get(msg.sender.id, 0) + 1
         if msg.receiver != request.user:
             user_ids.add(msg.receiver.id)
+            if msg.receiver.id not in latest_message_by_user or msg.timestamp > latest_message_by_user[msg.receiver.id].timestamp:
+                latest_message_by_user[msg.receiver.id] = msg
 
-    chat_users = CustomUser.objects.filter(id__in=user_ids)
+    chat_users = list(CustomUser.objects.filter(id__in=user_ids))
 
     for user in chat_users:
         ProfilePic.objects.get_or_create(user=user)
+        last_message = latest_message_by_user.get(user.id)
+        user.last_message = last_message
+        user.last_message_preview = (last_message.text or 'Photo') if last_message else ''
+        user.unread_count = unread_count_by_user.get(user.id, 0)
 
-    # Add online status from the DB first, with Redis as a fallback
+    chat_users.sort(key=lambda user: (user.last_message.timestamp if user.last_message else datetime.min), reverse=True)
+
     online_users = {}
     last_seen = {}
     try:

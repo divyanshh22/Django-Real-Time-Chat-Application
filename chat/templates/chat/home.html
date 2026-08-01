@@ -19,33 +19,40 @@
               padding:12px;border-radius:10px;border:1px solid var(--border);
               margin-bottom:10px;background:var(--bg);">
       
-      <!-- Profile Pic with online indicator -->
       <div style="position:relative;">
-      {% if user.profilepic.profile_pic %}
-        <img src="{{ user.profilepic.profile_pic.url }}" 
-             style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
-      {% else %}
-        <div style="width:44px;height:44px;border-radius:50%;
-                    background:var(--accent);display:flex;
-                    align-items:center;justify-content:center;
-                    font-weight:700;color:white;">
-          {{ user.username|first|upper }}
-        </div>
-      {% endif %}
-        <!-- Online status dot -->
+        {% if user.profilepic.profile_pic %}
+          <img src="{{ user.profilepic.profile_pic.url }}" 
+               style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
+        {% else %}
+          <div style="width:44px;height:44px;border-radius:50%;
+                      background:var(--accent);display:flex;
+                      align-items:center;justify-content:center;
+                      font-weight:700;color:white;">
+            {{ user.username|first|upper }}
+          </div>
+        {% endif %}
         <span class="status-dot" id="dot-{{ user.id }}"
               style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);
                      {% if user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
               title="{% if user.is_online %}Online{% else %}Last seen {{ user.last_seen_str|date:'M d, H:i' }}{% endif %}"></span>
       </div>
-      <!-- User Info -->
+
       <div style="flex:1;min-width:0;">
         <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ user.username }}</div>
-        <div style="color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ user.first_name }} {{ user.last_name }}</div>
+        <div style="color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {% if user.last_message_preview %}{{ user.last_message_preview }}{% else %}Start a conversation{% endif %}
+        </div>
       </div>
-      <!-- Online status text -->
-      <div id="status-text-{{ user.id }}" style="font-size:11px;color:var(--muted);white-space:nowrap;">
-        {% if user.is_online %}● Online{% else %}Last seen {{ user.last_seen_str|date:'M d, H:i' }}{% endif %}
+
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <div id="status-text-{{ user.id }}" style="font-size:11px;color:var(--muted);white-space:nowrap;">
+          {% if user.is_online %}● Online{% else %}Last seen {{ user.last_seen_str|date:'M d, H:i' }}{% endif %}
+        </div>
+        {% if user.unread_count %}
+          <span style="background:#4ade80;color:#0a0a0a;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:700;min-width:20px;text-align:center;">
+            {{ user.unread_count }}
+          </span>
+        {% endif %}
       </div>
     </a>
     {% endfor %}

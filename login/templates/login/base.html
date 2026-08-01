@@ -181,11 +181,13 @@ font-size:14px;
 
       <!-- Profile Link with pic -->
       <a href="{% url 'profile-view' %}" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--muted);padding:4px 10px;border-radius:8px;">
-        {% if user.profilepic.profile_pic %}
-          <img src="{{ user.profilepic.profile_pic.url }}" class="nav-avatar">
-        {% else %}
-          <div class="nav-avatar-placeholder">{{ user.username|first|upper }}</div>
-        {% endif %}
+        {% with profile=user.profilepic %}
+          {% if profile and profile.profile_pic %}
+            <img src="{{ profile.profile_pic.url }}" class="nav-avatar">
+          {% else %}
+            <div class="nav-avatar-placeholder">{{ user.username|first|upper }}</div>
+          {% endif %}
+        {% endwith %}
         <span style="font-size:14px;">{{ user.username }}</span>
       </a>
 
