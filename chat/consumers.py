@@ -1,190 +1,175 @@
 import json
-from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from django.contrib.auth import get_user_model
-from .models import Message
-import redis
-from datetime import datetime
+from channels.generic.websocket import AsyncWebsocketConsumer
+from django.core.exceptions import ObjectDoesNotExist
+from django.utils import timezone
 
-User = get_user_model()
+from .models import Message
+from login.models import CustomUser
+from datetime import datetime
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.current_user = self.scope["user"]
+        self.other_username = self.scope['url_route']['kwargs']['username']
+        self.me = self.scope['user']
 
-        if not self.current_user.is_authenticated:
+        if not self.me or not self.me.is_authenticated:
             await self.close()
             return
-
-        self.other_username = self.scope["url_route"]["kwargs"]["username"]
 
         try:
-            self.other_user = await database_sync_to_async(User.objects.get)(username=self.other_username)
-        except User.DoesNotExist:
+            self.other_user = await database_sync_to_async(CustomUser.objects.get)(username=self.other_username)
+        except ObjectDoesNotExist:
             await self.close()
             return
 
-        user_ids = sorted([self.current_user.id, self.other_user.id])
-        self.room_name = f"chat_{user_ids[0]}_{user_ids[1]}"
-        self.room_group_name = f"chat_{self.room_name}"
+        self.room_group_name = self._get_room_group_name(self.me.id, self.other_user.id)
+        try:
+            await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        except Exception:
+            pass
 
-        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
-
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                "type": "user_status",
-                "user_id": self.current_user.id,
-                "username": self.current_user.username,
-                "status": "online"
-            }
-        )
-
-        await self.set_user_online(self.current_user.id)
+        await database_sync_to_async(self._set_online_state)(self.me.id, True)
         await self.accept()
+        await self._announce_status('online')
 
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "user_status",
-                    "user_id": self.current_user.id,
-                    "username": self.current_user.username,
-                    "status": "offline",
-                    "last_seen": self.get_current_time()
-                }
-            )
-            await self.set_user_offline(self.current_user.id)
-            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+            try:
+                await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+            except Exception:
+                pass
 
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        message_type = data.get('type')
+        await database_sync_to_async(self._set_online_state)(self.me.id, False)
+        await self._announce_status('offline')
+
+    async def receive(self, text_data=None, bytes_data=None):
+        if text_data is None:
+            return
+
+        payload = json.loads(text_data)
+        message_type = payload.get('type')
 
         if message_type == 'message':
-            text = data.get('text', '').strip()
-            if text:
-                message = await self.save_message(text)
-
-                payload = {
-                    'id': message.id,
-                    'sender_id': message.sender.id,
-                    'sender_username': message.sender.username,
-                    'text': message.text,
-                    'photo_url': message.photo.url if message.photo else None,
-                    'timestamp': message.timestamp.isoformat(),
-                    'is_read': message.is_read
-                }
-
-                # Broadcast to the whole room, INCLUDING the sender.
-                # Frontend must dedupe using message['id'] if it also
-                # does optimistic local rendering on send.
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        "type": "chat_message",
-                        "message": payload
-                    }
-                )
-
-        elif message_type == 'read':
-            message_ids = data.get('message_ids', [])
-            if message_ids:
-                await self.mark_messages_read(message_ids)
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        "type": "messages_read",
-                        "reader_id": self.current_user.id,
-                        "message_ids": message_ids
-                    }
-                )
-
+            await self._handle_message(payload)
         elif message_type == 'typing':
-            is_typing = data.get('is_typing', False)
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "user_typing",
-                    "user_id": self.current_user.id,
-                    "username": self.current_user.username,
-                    "is_typing": is_typing
-                }
-            )
+            await self._broadcast_typing(payload.get('is_typing', False))
+        elif message_type == 'read':
+            await self._mark_messages_read(payload.get('message_ids', []))
 
     async def chat_message(self, event):
-        """Send message to WebSocket — now sent to sender too."""
         await self.send(text_data=json.dumps({
-            "type": "message",
-            "message": event["message"]
+            'type': 'message',
+            'message': event['message'],
         }))
 
     async def user_status(self, event):
-        if event["user_id"] != self.current_user.id:
-            await self.send(text_data=json.dumps({
-                "type": "user_status",
-                "user_id": event["user_id"],
-                "username": event["username"],
-                "status": event["status"],
-                "last_seen": event.get("last_seen")
-            }))
+        await self.send(text_data=json.dumps({
+            'type': 'user_status',
+            'status': event['status'],
+            'last_seen': event.get('last_seen'),
+            'username': event.get('username'),
+        }))
+
+    async def typing_status(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'typing',
+            'username': event['username'],
+            'is_typing': event['is_typing'],
+        }))
 
     async def messages_read(self, event):
-        if event["reader_id"] != self.current_user.id:
-            await self.send(text_data=json.dumps({
-                "type": "messages_read",
-                "reader_id": event["reader_id"],
-                "message_ids": event["message_ids"]
-            }))
+        await self.send(text_data=json.dumps({
+            'type': 'messages_read',
+            'message_ids': event['message_ids'],
+        }))
 
-    async def user_typing(self, event):
-        if event["user_id"] != self.current_user.id:
-            await self.send(text_data=json.dumps({
-                "type": "typing",
-                "user_id": event["user_id"],
-                "username": event["username"],
-                "is_typing": event["is_typing"]
-            }))
+    @staticmethod
+    def _get_room_group_name(user_id_1, user_id_2):
+        return f"chat_{min(user_id_1, user_id_2)}_{max(user_id_1, user_id_2)}"
 
-    @database_sync_to_async
-    def save_message(self, text):
+    async def _announce_status(self, status):
+        now = timezone.now().isoformat()
+        try:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'user_status',
+                    'status': status,
+                    'last_seen': now if status == 'offline' else None,
+                    'username': self.me.username,
+                }
+            )
+        except Exception:
+            pass
+
+    async def _broadcast_typing(self, is_typing):
+        try:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'typing_status',
+                    'username': self.me.username,
+                    'is_typing': is_typing,
+                }
+            )
+        except Exception:
+            pass
+
+    async def _handle_message(self, payload):
+        text = (payload.get('text') or '').strip()
+        if not text:
+            return
+
+        message = await database_sync_to_async(self._create_message)(text=text)
+        try:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message': {
+                        'id': message.id,
+                        'sender_id': message.sender.id,
+                        'sender_username': message.sender.username,
+                        'text': message.text,
+                        'photo_url': message.photo.url if message.photo else None,
+                        'timestamp': message.timestamp.isoformat(),
+                        'is_read': message.is_read,
+                    },
+                }
+            )
+        except Exception:
+            pass
+
+    def _create_message(self, text):
         return Message.objects.create(
-            sender=self.current_user,
+            sender=self.me,
             receiver=self.other_user,
-            text=text
+            text=text,
         )
 
-    @database_sync_to_async
-    def mark_messages_read(self, message_ids):
-        Message.objects.filter(
-            id__in=message_ids,
-            receiver=self.current_user,
-            sender=self.other_user,
-            is_read=False
-        ).update(is_read=True)
+    def _set_online_state(self, user_id, is_online):
+        CustomUser.objects.filter(id=user_id).update(
+            is_online=is_online,
+            last_seen=None if is_online else datetime.utcnow(),
+        )
 
-    @database_sync_to_async
-    def set_user_online(self, user_id):
+    async def _mark_messages_read(self, message_ids):
+        if not message_ids:
+            return
+
+        await database_sync_to_async(self._mark_ids_as_read)(message_ids)
         try:
-            r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True,
-                             socket_connect_timeout=1, socket_timeout=1)
-            r.hset('online_users', user_id, 'online')
-            r.sadd(f'user_rooms:{user_id}', self.room_group_name)
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'messages_read',
+                    'message_ids': message_ids,
+                }
+            )
         except Exception:
             pass
 
-    @database_sync_to_async
-    def set_user_offline(self, user_id):
-        try:
-            r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True,
-                             socket_connect_timeout=1, socket_timeout=1)
-            r.hset('online_users', user_id, 'offline')
-            r.hset('last_seen', user_id, datetime.utcnow().isoformat())
-            r.srem(f'user_rooms:{user_id}', self.room_group_name)
-        except Exception:
-            pass
-
-    def get_current_time(self):
-        return datetime.utcnow().isoformat()
+    def _mark_ids_as_read(self, message_ids):
+        Message.objects.filter(id__in=message_ids, receiver=self.me).update(is_read=True)

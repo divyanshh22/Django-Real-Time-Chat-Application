@@ -258,14 +258,27 @@
   }
   
   // Send message via WebSocket
-  function sendMessage(text) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'message',
-        text: text
-      }));
-      // Optimistically add to UI for sender
-      // The actual message will come back via WebSocket
+  async function sendMessage(text) {
+    const formData = new FormData(msgForm);
+    if (text) {
+      formData.set('text', text);
+    }
+
+    const response = await fetch(`{% url 'chat:send-message-api' other_user.username %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Unable to send message');
+    }
+
+    if (data.message) {
+      appendMessage(data.message);
     }
   }
   
@@ -300,13 +313,22 @@
   }
   
   // Handle form submission
-  msgForm.addEventListener('submit', function(e) {
+  msgForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     const text = msgInput.value.trim();
-    if (text) {
-      sendMessage(text);
+    const photoInput = document.getElementById('photo');
+
+    if (!text && !photoInput.files.length) {
+      return;
+    }
+
+    try {
+      await sendMessage(text);
       msgInput.value = '';
+      photoInput.value = '';
       stopTyping();
+    } catch (error) {
+      console.error(error);
     }
   });
   

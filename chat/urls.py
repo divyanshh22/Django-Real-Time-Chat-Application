@@ -6,7 +6,8 @@ app_name = 'chat'
 urlpatterns = [
     path('', views.home_view, name='home-view'),
     path('search/', views.search_view, name='search-view'),
+    path('api/messages/<str:username>/', views.send_message_api, name='send-message-api'),
+    path('api/messages/<str:username>/history/', views.get_messages_api, name='messages-api'),
     path('<str:username>/', views.conversation_view, name='conversation-view'),
-    path('api/messages/<str:username>/', views.get_messages_api, name='messages-api'),
     path('api/status/<int:user_id>/', views.get_user_status_api, name='user-status-api'),
 ]

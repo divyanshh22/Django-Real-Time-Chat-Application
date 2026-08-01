@@ -29,21 +29,6 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() in ['true', '1', 'yes']
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-# Render deploys behind an HTTPS proxy — without this, Django thinks
-# incoming requests are plain HTTP and CSRF's "same-origin/scheme" check fails.
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-# CSRF needs the exact HTTPS origin(s) your site is served from.
-# Render gives you RENDER_EXTERNAL_HOSTNAME automatically at runtime,
-# so this stays correct even if you rename the service or add a custom domain.
-CSRF_TRUSTED_ORIGINS = [
-    'https://django-chat-application-71vb.onrender.com',
-]
-
-render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if render_external_hostname:
-    CSRF_TRUSTED_ORIGINS.append(f'https://{render_external_hostname}')
-
 
 # Application definition
 
@@ -91,12 +76,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'chattingapp.wsgi.application'
 ASGI_APPLICATION = 'chattingapp.asgi.application'
 
-# Channels Configuration
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
+# Channels configuration
+# Default to in-memory for local/dev so the websocket chat keeps working without a Redis service.
+# Set USE_REDIS=true and REDIS_URL if you want Redis-backed pub/sub in production.
+USE_REDIS = os.environ.get('USE_REDIS', 'false').lower() in ['true', '1', 'yes']
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+
+if USE_REDIS:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -170,3 +170,12 @@ LOGIN_REDIRECT_URL = 'chat:home-view'
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Security settings for production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
