@@ -25,14 +25,23 @@
     {% endif %}
     </a>
 
-    <div style="flex:1;display:flex;align-items:center;gap:8px;">
+    <div style="flex:1;min-width:0;">
       <div style="font-weight:600;display:flex;align-items:center;gap:8px;">
         {{ other_user.username }}
+        <span id="online-indicator" class="status-dot"
+              style="width:10px;height:10px;border-radius:50%;display:inline-block;
+                     {% if other_user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
+              title="{% if other_user.is_online %}Online{% else %}Offline{% endif %}"></span>
       </div>
-      <span id="online-indicator" class="status-dot"
-            style="width:10px;height:10px;border-radius:50%;display:inline-block;
-                   {% if other_user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
-            title="{% if other_user.is_online %}Online{% else %}Offline{% endif %}"></span>
+      <div id="last-seen-text" style="font-size:11px;color:var(--muted);margin-top:2px;">
+        {% if other_user.is_online %}
+          Online
+        {% elif other_user.last_seen %}
+          Last seen {{ other_user.last_seen|timesince }} ago
+        {% else %}
+          Offline
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -172,8 +181,10 @@
     switch(data.type) {
       case 'message':
         appendMessage(data.message);
-        // Auto-mark as read when received
-        markMessageAsRead(data.message.id);
+        // Auto-mark as read when received (only for messages from the other user)
+        if (data.message.sender_id !== currentUserId) {
+          markMessageAsRead(data.message.id);
+        }
         break;
       case 'user_status':
         updateUserStatus(data);
@@ -221,9 +232,25 @@
   }
   
   function updateUserStatus(data) {
+    // Ignore broadcasts about the current user's own connection status
+    if (data.username && data.username === currentUsername) {
+      return;
+    }
+
     const isOnline = data.status === 'online';
     onlineIndicator.style.background = isOnline ? '#4ade80' : '#9ca3af';
     onlineIndicator.title = isOnline ? 'Online' : 'Offline';
+
+    const lastSeenEl = document.getElementById('last-seen-text');
+    if (lastSeenEl) {
+      if (isOnline) {
+        lastSeenEl.textContent = 'Online';
+      } else if (data.last_seen) {
+        lastSeenEl.textContent = 'Last seen ' + formatTime(data.last_seen);
+      } else {
+        lastSeenEl.textContent = 'Offline';
+      }
+    }
   }
   
   function updateReadStatus(messageIds) {

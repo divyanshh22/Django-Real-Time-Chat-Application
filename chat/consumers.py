@@ -158,7 +158,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if not message_ids:
             return
 
-        await database_sync_to_async(self._mark_ids_as_read)(message_ids)
+        updated = await database_sync_to_async(self._mark_ids_as_read)(message_ids)
+        if not updated:
+            return
+
         try:
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -171,4 +174,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
             pass
 
     def _mark_ids_as_read(self, message_ids):
-        Message.objects.filter(id__in=message_ids, receiver=self.me).update(is_read=True)
+        return Message.objects.filter(id__in=message_ids, receiver=self.me).update(is_read=True)
