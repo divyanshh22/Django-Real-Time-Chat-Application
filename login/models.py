@@ -12,7 +12,7 @@ class CustomUser(AbstractUser):
 
 class ProfilePic(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    profile_pic = models.ImageField(upload_to='profile_pics/', default='default.jpg')
+    profile_pic = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     joined_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

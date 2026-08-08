@@ -1,8 +1,8 @@
 import json
-from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 
 class PresenceConsumer(AsyncWebsocketConsumer):
@@ -37,7 +37,7 @@ class PresenceConsumer(AsyncWebsocketConsumer):
                     "user_id": self.user.id,
                     "username": self.user.username,
                     "status": "offline",
-                    "last_seen": datetime.utcnow().isoformat()
+                    "last_seen": timezone.now().isoformat()
                 }
             )
             await self.channel_layer.group_discard("global_presence", self.channel_name)
@@ -64,7 +64,7 @@ class PresenceConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def set_offline(self, user_id):
         User = get_user_model()
-        User.objects.filter(id=user_id).update(is_online=False, last_seen=datetime.utcnow())
+        User.objects.filter(id=user_id).update(is_online=False, last_seen=timezone.now())
 
     @database_sync_to_async
     def get_statuses(self, user_ids):

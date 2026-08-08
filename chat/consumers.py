@@ -6,7 +6,6 @@ from django.utils import timezone
 
 from .models import Message
 from login.models import CustomUser
-from datetime import datetime
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -152,7 +151,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def _set_online_state(self, user_id, is_online):
         CustomUser.objects.filter(id=user_id).update(
             is_online=is_online,
-            last_seen=None if is_online else datetime.utcnow(),
+            last_seen=None if is_online else timezone.now(),
         )
 
     async def _mark_messages_read(self, message_ids):

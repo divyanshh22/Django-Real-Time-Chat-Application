@@ -1,14 +1,30 @@
+from datetime import datetime
+
+import redis
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from django.shortcuts import render, redirect, get_object_or_404
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from .models import Message
+
 from login.models import CustomUser, ProfilePic
-import redis
-from datetime import datetime
+
+from .models import Message
+
+
+def _redis_client():
+    if not getattr(settings, 'USE_REDIS', False):
+        return None
+    return redis.Redis.from_url(
+        settings.REDIS_URL,
+        decode_responses=True,
+        socket_connect_timeout=1,
+        socket_timeout=1,
+    )
 
 
 def _build_home_inbox_context(request):
@@ -46,12 +62,13 @@ def _build_home_inbox_context(request):
 
     online_users = {}
     last_seen = {}
-    try:
-        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
-        online_users = r.hgetall('online_users')
-        last_seen = r.hgetall('last_seen')
-    except Exception:
-        pass
+    r = _redis_client()
+    if r is not None:
+        try:
+            online_users = r.hgetall('online_users')
+            last_seen = r.hgetall('last_seen')
+        except Exception:
+            pass
 
     for user in chat_users:
         user.is_online = online_users.get(str(user.id)) == 'online' or user.is_online
@@ -69,13 +86,15 @@ def get_user_presence(user_id):
     if user:
         return bool(user.is_online), user.last_seen.isoformat() if user.last_seen else None
 
-    try:
-        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
-        is_online = r.hget('online_users', str(user_id)) == 'online'
-        last_seen = r.hget('last_seen', str(user_id))
-        return is_online, last_seen
-    except Exception:
-        return False, None
+    r = _redis_client()
+    if r is not None:
+        try:
+            is_online = r.hget('online_users', str(user_id)) == 'online'
+            last_seen = r.hget('last_seen', str(user_id))
+            return is_online, last_seen
+        except Exception:
+            pass
+    return False, None
 
 
 def set_user_presence(user_id, is_online, last_seen=None):
@@ -87,18 +106,19 @@ def set_user_presence(user_id, is_online, last_seen=None):
     except Exception:
         pass
 
-    try:
-        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
-        if is_online:
-            r.hset('online_users', str(user_id), 'online')
-            r.hdel('last_seen', str(user_id))
-        else:
-            r.hdel('online_users', str(user_id))
-            if last_seen is None:
-                last_seen = datetime.utcnow().isoformat()
-            r.hset('last_seen', str(user_id), last_seen)
-    except Exception:
-        pass
+    r = _redis_client()
+    if r is not None:
+        try:
+            if is_online:
+                r.hset('online_users', str(user_id), 'online')
+                r.hdel('last_seen', str(user_id))
+            else:
+                r.hdel('online_users', str(user_id))
+                if last_seen is None:
+                    last_seen = timezone.now().isoformat()
+                r.hset('last_seen', str(user_id), last_seen)
+        except Exception:
+            pass
 
 
 @login_required(login_url='login-view')
