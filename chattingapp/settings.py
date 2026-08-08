@@ -168,8 +168,6 @@ CLOUDINARY_STORAGE = {
 }
 
 if os.environ.get('CLOUDINARY_CLOUD_NAME'):
-    INSTALLED_APPS.insert(0, 'cloudinary_storage')
-    INSTALLED_APPS.append('cloudinary')
     STORAGES['default'] = {
         'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'
     }
