@@ -2,24 +2,27 @@
 {% block title %}Chat with {{ other_user.username }}{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:600px;padding:0;overflow:hidden;">
+<div class="card" style="max-width:600px;padding:0;overflow:hidden;box-shadow:var(--shadow);">
 
   <!-- Header -->
-  <div style="padding:16px;border-bottom:1px solid var(--border);
-              display:flex;align-items:center;gap:12px;">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border);
+              display:flex;align-items:center;gap:12px;background:var(--surface);">
     
-    <a href="{% url 'chat:home-view' %}" style="color:var(--muted);text-decoration:none;font-size:20px;">←</a>
+    <a href="{% url 'chat:home-view' %}" title="Back to chats"
+       style="color:var(--muted);text-decoration:none;font-size:18px;width:36px;height:36px;
+              border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+              background:var(--surface-2);border:1px solid var(--border);transition:all .15s ease;">←</a>
 
     <!-- Profile Pic -->
-    <a href="{% url 'user_profile' other_user.username %}">
+    <a href="{% url 'user_profile' other_user.username %}" style="flex-shrink:0;">
     {% if other_user.profilepic.profile_pic %}
       <img src="{{ other_user.profilepic.profile_pic.url }}"
-           style="width:40px;height:40px;border-radius:50%;object-fit:cover;cursor:pointer;">
+           style="width:42px;height:42px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid var(--accent);">
     {% else %}
-      <div style="width:40px;height:40px;border-radius:50%;
-                  background:var(--accent);display:flex;
+      <div style="width:42px;height:42px;border-radius:50%;
+                  background:linear-gradient(135deg,var(--accent),#5a4bd4);display:flex;
                   align-items:center;justify-content:center;
-                  font-weight:700;color:white;">
+                  font-weight:700;color:white;cursor:pointer;">
         {{ other_user.username|first|upper }}
       </div>
     {% endif %}
@@ -30,10 +33,10 @@
         {{ other_user.username }}
         <span id="online-indicator" class="status-dot"
               style="width:10px;height:10px;border-radius:50%;display:inline-block;
-                     {% if other_user.is_online %}background:#4ade80;{% else %}background:#9ca3af;{% endif %}"
+                     {% if other_user.is_online %}background:var(--online);{% else %}background:var(--offline);{% endif %}"
               title="{% if other_user.is_online %}Online{% else %}Offline{% endif %}"></span>
       </div>
-      <div id="last-seen-text" style="font-size:11px;color:var(--muted);margin-top:2px;">
+      <div id="last-seen-text" style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
         {% if other_user.is_online %}
           Online
         {% elif other_user.last_seen %}
@@ -46,65 +49,75 @@
   </div>
 
   <!-- Messages -->
-  <div id="msg-box" style="height:420px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;">
+  <div id="msg-box" style="height:420px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;">
     {% for msg in messages %}
-      <div class="message" data-message-id="{{ msg.id }}" data-sender-id="{{ msg.sender.id }}" style="display:flex;flex-direction:column;
+      <div class="message" data-message-id="{{ msg.id }}" data-sender-id="{{ msg.sender.id }}"
+           data-read="{% if msg.is_read %}true{% else %}false{% endif %}"
+           style="display:flex;flex-direction:column;max-width:76%;
+                  align-self:{% if msg.sender == request.user %}flex-end{% else %}flex-start{% endif %};
                   align-items:{% if msg.sender == request.user %}flex-end{% else %}flex-start{% endif %};">
         
         {% if msg.photo %}
           <img src="{{ msg.photo.url }}" 
-               style="max-width:220px;border-radius:10px;cursor:pointer;"
+               style="max-width:220px;border-radius:14px;cursor:pointer;border:1px solid var(--border);"
                onclick="window.open(this.src)">
         {% endif %}
 
         {% if msg.text %}
-          <div style="max-width:70%;padding:10px 14px;border-radius:12px;font-size:14px;
-                      background:{% if msg.sender == request.user %}var(--accent){% else %}var(--surface){% endif %};
-                      color:var(--text);border:1px solid var(--border);position:relative;">
+          <div style="max-width:100%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;
+                      {% if msg.sender == request.user %}
+                        background:linear-gradient(135deg,var(--accent),#6a5af0);color:white;border-bottom-right-radius:4px;
+                      {% else %}
+                        background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px;
+                      {% endif %}
+                      position:relative;word-break:break-word;">
             {{ msg.text }}
-            <span class="read-status" style="font-size:10px;margin-left:8px;color:var(--muted);"
-                  data-message-id="{{ msg.id }}">
-              {% if msg.sender == request.user %}
+            {% if msg.sender == request.user %}
+              <span class="read-status" style="font-size:10px;margin-left:8px;opacity:0.9;white-space:nowrap;"
+                    data-message-id="{{ msg.id }}"
+                    {% if msg.is_read %}data-read="true"{% endif %}>
                 {% if msg.is_read %}✓✓{% else %}✓{% endif %}
-              {% endif %}
-            </span>
+              </span>
+            {% endif %}
           </div>
         {% endif %}
 
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">
-          {{ msg.timestamp|date:"d M, H:i" }}
+        <div style="font-size:10.5px;color:var(--muted-2);margin-top:3px;">
+          {{ msg.timestamp|date:"d M, g:i A" }}
         </div>
       </div>
     {% empty %}
-      <div style="text-align:center;color:var(--muted);font-size:14px;margin:auto;">
-        No messages yet — say hi! 👋
+      <div style="text-align:center;color:var(--muted);font-size:14px;margin:auto;padding:2rem;">
+        <div style="font-size:2rem;margin-bottom:10px;">👋</div>
+        No messages yet — say hi!
       </div>
     {% endfor %}
   </div>
 
   <!-- Typing indicator -->
-  <div id="typing-indicator" style="padding:0 16px 8px;font-size:12px;color:var(--muted);height:16px;display:none;">
+  <div id="typing-indicator" style="padding:0 16px 8px;font-size:12px;color:var(--accent-soft);height:16px;display:none;font-style:italic;">
     <span id="typing-text"></span>
   </div>
 
   <!-- Input Box -->
   <form id="msg-form" method="POST" enctype="multipart/form-data"
-        style="padding:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;">
+        style="padding:14px 16px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;background:var(--surface);">
     {% csrf_token %}
     
-    <div style="display:flex;gap:8px;">
-      <input type="text" name="text" id="msg-input" placeholder="Type a message..." 
-             style="margin-top:0;flex:1;padding:12px 16px;border:1px solid var(--border);border-radius:24px;background:var(--surface);color:var(--text);font-size:14px;outline:none;">
-      <button type="submit" id="send-btn" style="width:auto;padding:12px 24px;border:none;border-radius:24px;background:var(--accent);color:white;font-weight:600;cursor:pointer;">Send</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button type="button" id="photo-btn" title="Attach photo"
+              style="width:auto;padding:10px 12px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);font-size:16px;box-shadow:none;flex-shrink:0;">📷</button>
+      <input type="text" name="text" id="msg-input" placeholder="Type a message..." autocomplete="off"
+             style="margin-top:0;flex:1;padding:12px 16px;border:1px solid var(--border);border-radius:24px;background:var(--bg);color:var(--text);font-size:14px;outline:none;">
+      <button type="submit" id="send-btn"
+              style="width:auto;padding:12px 20px;border:none;border-radius:24px;background:linear-gradient(135deg,var(--accent),#6a5af0);color:white;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(124,109,250,0.35);flex-shrink:0;">Send ➤</button>
     </div>
 
     <!-- Photo Upload -->
     <div style="display:flex;align-items:center;gap:10px;">
-      <label for="photo" style="cursor:pointer;color:var(--accent-soft);font-size:13px;">
-        📷 Send Photo
-      </label>
-      <input type="file" name="photo" id="photo" accept="image/*" 
-             style="font-size:12px;color:var(--muted);background:none;border:none;width:auto;display:none;">
+      <input type="file" name="photo" id="photo" accept="image/*"
+             style="display:none;">
+      <span id="photo-preview" style="display:none;font-size:12px;color:var(--accent-soft);">📷 1 image selected</span>
     </div>
 
   </form>
@@ -198,34 +211,46 @@
     }
   }
   
+  function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   function appendMessage(message) {
+    if (!message) {
+      return;
+    }
     // Check if message already exists
     if (document.querySelector(`.message[data-message-id="${message.id}"]`)) {
       return;
     }
-    
+
     const isOwn = message.sender_id === currentUserId;
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
     messageDiv.dataset.messageId = message.id;
     messageDiv.dataset.senderId = message.sender_id;
-    messageDiv.style.cssText = `display:flex;flex-direction:column;align-items:${isOwn ? 'flex-end' : 'flex-start'};`;
-    
+    messageDiv.dataset.read = message.is_read ? 'true' : 'false';
+    messageDiv.style.cssText = `display:flex;flex-direction:column;max-width:76%;align-self:${isOwn ? 'flex-end' : 'flex-start'};align-items:${isOwn ? 'flex-end' : 'flex-start'};`;
+
     let html = '';
     if (message.photo_url) {
-      html += `<img src="${message.photo_url}" style="max-width:220px;border-radius:10px;cursor:pointer;" onclick="window.open(this.src)">`;
+      html += `<img src="${message.photo_url}" style="max-width:220px;border-radius:14px;cursor:pointer;border:1px solid var(--border);" onclick="window.open(this.src)">`;
     }
     if (message.text) {
       const tickText = isOwn ? (message.is_read ? '✓✓' : '✓') : '';
-      html += `<div style="max-width:70%;padding:10px 14px;border-radius:12px;font-size:14px;
-                      background:${isOwn ? 'var(--accent)' : 'var(--surface)'};
-                      color:var(--text);border:1px solid var(--border);position:relative;">
-                ${message.text}
-                ${isOwn ? `<span class="read-status" style="font-size:10px;margin-left:8px;color:${message.is_read ? '#4ade80' : 'var(--muted)'};" data-message-id="${message.id}">${tickText}</span>` : ''}
+      html += `<div style="max-width:100%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word;
+                      ${isOwn
+                        ? `background:linear-gradient(135deg,var(--accent),#6a5af0);color:white;border-bottom-right-radius:4px;`
+                        : `background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px;`}">
+                ${escapeHtml(message.text)}
+                ${isOwn ? `<span class="read-status" style="font-size:10px;margin-left:8px;opacity:0.9;white-space:nowrap;color:${message.is_read ? '#a7f3d0' : 'rgba(255,255,255,0.7)'};" data-message-id="${message.id}">${tickText}</span>` : ''}
                </div>`;
     }
-    html += `<div style="font-size:11px;color:var(--muted);margin-top:4px;">${formatTime(message.timestamp)}</div>`;
-    
+    html += `<div style="font-size:10.5px;color:var(--muted-2);margin-top:3px;">${formatTime(message.timestamp)}</div>`;
+
     messageDiv.innerHTML = html;
     msgBox.appendChild(messageDiv);
     scrollToBottom();
@@ -260,6 +285,10 @@
         statusEl.textContent = '✓✓';
         statusEl.style.color = '#4ade80';
       }
+      const msgEl = document.querySelector(`.message[data-message-id="${id}"]`);
+      if (msgEl) {
+        msgEl.dataset.read = 'true';
+      }
     });
   }
   
@@ -277,8 +306,20 @@
   }
   
   function formatTime(isoString) {
+    if (!isoString) {
+      return '';
+    }
     const date = new Date(isoString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    if (isNaN(date.getTime())) {
+      return '';
+    }
+    const now = new Date();
+    const sameDay = date.toDateString() === now.toDateString();
+    const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (sameDay) {
+      return timeStr;
+    }
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' + timeStr;
   }
   
   function scrollToBottom() {
@@ -347,10 +388,25 @@
   }
   
   // Handle form submission
+  const photoInput = document.getElementById('photo');
+  const photoPreview = document.getElementById('photo-preview');
+  const photoBtn = document.getElementById('photo-btn');
+
+  if (photoBtn && photoInput) {
+    photoBtn.addEventListener('click', function() {
+      photoInput.click();
+    });
+  }
+
+  if (photoInput && photoPreview) {
+    photoInput.addEventListener('change', function() {
+      photoPreview.style.display = photoInput.files.length ? 'block' : 'none';
+    });
+  }
+
   msgForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     const text = msgInput.value.trim();
-    const photoInput = document.getElementById('photo');
 
     if (!text && !photoInput.files.length) {
       return;
@@ -360,6 +416,9 @@
       await sendMessage(text);
       msgInput.value = '';
       photoInput.value = '';
+      if (photoPreview) {
+        photoPreview.style.display = 'none';
+      }
       stopTyping();
     } catch (error) {
       console.error(error);

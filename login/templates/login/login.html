@@ -2,14 +2,18 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-<div class="card">
+<div class="card" style="margin:0 auto;">
 
-    <h2>Login</h2>
-    <p class="sub">Welcome back</p>
+    <div class="card-header">
+        <h2>Welcome back 👋</h2>
+    </div>
+    <p class="sub">Sign in to continue to your chats</p>
 
     {% if messages %}
         {% for message in messages %}
-            <p class="{{ message.tags }}">{{ message }}</p>
+            <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                <span>{{ message }}</span>
+            </div>
         {% endfor %}
     {% endif %}
 
@@ -17,22 +21,37 @@
         {% csrf_token %}
 
         <div class="form-group">
-            <label>Username</label>
-            <input type="text" name="username" required>
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus>
         </div>
 
         <div class="form-group">
-            <label>Password</label>
-            <input type="password" name="password" required>
+            <label for="password">Password</label>
+            <div class="input-wrap">
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                <button type="button" class="toggle-btn" onclick="togglePassword('password', this)">👁</button>
+            </div>
         </div>
-
-        <!-- Forgot Password Link -->
-
 
         <button type="submit">Login</button>
 
     </form>
 
+    <div class="divider"></div>
+    <p class="auth-alt">Don't have an account? <a href="{% url 'register-view' %}">Create one</a></p>
 
 </div>
+
+<script>
+function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+</script>
 {% endblock %}

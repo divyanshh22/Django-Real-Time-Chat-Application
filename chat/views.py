@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import redis
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -56,9 +54,10 @@ def _build_home_inbox_context(request):
         last_message = latest_message_by_user.get(user.id)
         user.last_message = last_message
         user.last_message_preview = (last_message.text or 'Photo') if last_message else ''
+        user.last_message_time = last_message.timestamp if last_message else None
         user.unread_count = unread_count_by_user.get(user.id, 0)
 
-    chat_users.sort(key=lambda user: (user.last_message.timestamp if user.last_message else datetime.min), reverse=True)
+    chat_users.sort(key=lambda user: (user.last_message.timestamp if user.last_message else timezone.datetime.min.replace(tzinfo=timezone.utc)), reverse=True)
 
     online_users = {}
     last_seen = {}
@@ -137,6 +136,7 @@ def home_inbox_api(request):
             'id': user.id,
             'username': user.username,
             'preview': user.last_message_preview,
+            'last_message_time': user.last_message_time.isoformat() if user.last_message_time else None,
             'unread_count': user.unread_count,
             'is_online': user.is_online,
             'profile_pic_url': user.profilepic.profile_pic.url if getattr(user.profilepic, 'profile_pic', None) else None,
@@ -170,12 +170,30 @@ def conversation_view(request, username):
         photo = request.FILES.get('photo')
 
         if text or photo:
-            Message.objects.create(
+            message = Message.objects.create(
                 sender=request.user,
                 receiver=other_user,
                 text=text,
                 photo=photo
             )
+
+            # Broadcast over WebSocket so the other user gets it in real time
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(get_room_group_name(request.user.id, other_user.id), {
+                    'type': 'chat_message',
+                    'message': {
+                        'id': message.id,
+                        'sender_id': message.sender.id,
+                        'sender_username': message.sender.username,
+                        'text': message.text,
+                        'photo_url': message.photo.url if message.photo else None,
+                        'timestamp': message.timestamp.isoformat(),
+                        'is_read': message.is_read,
+                    },
+                })
+            except Exception:
+                pass
         return redirect('chat:conversation-view', username=username)
 
     # Get online status from DB first, with Redis as a fallback

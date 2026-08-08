@@ -2,22 +2,20 @@
 {% block title %}My Profile{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:480px;">
+<div class="card" style="max-width:480px;margin:0 auto;">
 
-  <h2 style="margin-bottom:6px;font-size:1rem;">MY PROFILE</h2>
+  <div class="card-header">
+    <h2>My Profile</h2>
+  </div>
   <p class="sub">Update your profile info</p>
 
   <!-- Profile Pic Preview -->
   <div class="center" style="margin-bottom:20px;">
     {% if profile.profile_pic %}
       <img src="{{ profile.profile_pic.url }}"
-           style="width:90px;height:90px;border-radius:50%;object-fit:cover;
-                  border:3px solid var(--accent);">
+           class="avatar" style="width:96px;height:96px;border:3px solid var(--accent);">
     {% else %}
-      <div style="width:90px;height:90px;border-radius:50%;
-                  background:var(--accent);display:flex;
-                  align-items:center;justify-content:center;
-                  font-size:2rem;font-weight:700;color:white;margin:auto;">
+      <div class="avatar-placeholder" style="width:96px;height:96px;font-size:2.2rem;margin:0 auto;">
         {{ request.user.username|first|upper }}
       </div>
     {% endif %}
@@ -25,10 +23,8 @@
 
   <!-- Messages -->
   {% for msg in messages %}
-    <div style="padding:10px;border-radius:8px;margin-bottom:14px;font-size:14px;
-                background:{% if msg.tags == 'success' %}#1a3a2a{% else %}#3a1a1a{% endif %};
-                color:{% if msg.tags == 'success' %}#4caf81{% else %}var(--danger){% endif %};">
-      {{ msg }}
+    <div class="alert {% if msg.tags == 'success' %}alert-success{% elif msg.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+      <span>{{ msg }}</span>
     </div>
   {% endfor %}
 
@@ -64,6 +60,9 @@
 
     <button type="submit">Save Changes</button>
   </form>
+
+  <div class="divider"></div>
+  <a href="{% url 'chat:home-view' %}" class="btn btn-outline btn-block">← Back to Chats</a>
 
 </div>
 {% endblock %}

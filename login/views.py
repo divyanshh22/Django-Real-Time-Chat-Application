@@ -101,6 +101,11 @@ def profile_view(request):
 def user_profile_view(request, username):
     user = get_object_or_404(CustomUser, username=username)
     profile, _ = ProfilePic.objects.get_or_create(user=user)
+    try:
+        from chat.views import get_user_presence
+        user.is_online, _ = get_user_presence(user.id)
+    except Exception:
+        pass
     return render(request, 'login/user_profile.html', {
         'profile_user': user,
         'profile': profile

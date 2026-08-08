@@ -2,16 +2,18 @@
 {% block title %}Search Users{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:500px;">
+<div class="card" style="max-width:520px;width:100%;margin:0 auto;padding:1.5rem;">
 
-  <h2 style="margin-bottom:6px;font-size:1rem;">SEARCH USERS</h2>
+  <div class="card-header">
+    <h2>Search Users</h2>
+  </div>
   <p class="sub">Find people by username</p>
 
   <!-- Search Form -->
-  <form method="GET" action="{% url 'chat:search-view' %}" style="margin-bottom:24px;">
+  <form method="GET" action="{% url 'chat:search-view' %}" style="margin-bottom:20px;">
     <div style="display:flex;gap:8px;">
-      <input type="text" name="q" value="{{ query }}" 
-             placeholder="Enter username..." style="margin-top:0;flex:1;">
+      <input type="text" name="q" value="{{ query }}"
+             placeholder="Enter username..." style="margin-top:0;flex:1;" autofocus autocomplete="off">
       <button type="submit" style="width:auto;padding:12px 16px;">🔍</button>
     </div>
   </form>
@@ -19,58 +21,48 @@
   <!-- Results -->
   {% if results %}
     {% for user in results %}
-    <div style="display:flex;align-items:center;justify-content:space-between;
-                padding:12px;border-radius:10px;border:1px solid var(--border);
-                margin-bottom:10px;background:var(--bg);">
+    <div class="chat-user-row" style="justify-content:space-between;cursor:default;">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+        <div style="position:relative;flex-shrink:0;">
+          {% if user.profilepic.profile_pic %}
+            <img src="{{ user.profilepic.profile_pic.url }}" class="avatar">
+          {% else %}
+            <div class="avatar-placeholder">{{ user.username|first|upper }}</div>
+          {% endif %}
+          <span class="status-dot chat-presence-dot"
+                style="{% if user.is_online %}background:var(--online);{% else %}background:var(--offline);{% endif %}"></span>
+        </div>
 
-      <div style="display:flex;align-items:center;gap:12px;">
-        <!-- Profile Pic -->
-        {% if user.profilepic.profile_pic %}
-          <img src="{{ user.profilepic.profile_pic.url }}"
-               style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
-        {% else %}
-          <div style="width:44px;height:44px;border-radius:50%;
-                      background:var(--accent);display:flex;
-                      align-items:center;justify-content:center;
-                      font-weight:700;color:white;">
-            {{ user.username|first|upper }}
-          </div>
-        {% endif %}
-
-        <!-- Info -->
-        <div>
+        <div style="min-width:0;">
           <div style="font-weight:600;color:var(--text);">{{ user.username }}</div>
-          <div style="font-size:13px;color:var(--muted);">{{ user.first_name }} {{ user.last_name }}</div>
+          <div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ user.first_name }} {{ user.last_name }}
+          </div>
         </div>
       </div>
 
-      <!-- Buttons -->
-      <div style="display:flex;gap:8px;">
-        <a href="{% url 'user_profile' user.username %}"
-           style="padding:8px 12px;border-radius:8px;font-size:13px;
-                  border:1px solid var(--border);color:var(--muted);text-decoration:none;">
-          Profile
-        </a>
-        <a href="{% url 'chat:conversation-view' user.username %}"
-           style="padding:8px 12px;border-radius:8px;font-size:13px;
-                  background:var(--accent);color:white;text-decoration:none;">
-          Chat
-        </a>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <a href="{% url 'user_profile' user.username %}" class="btn btn-outline btn-sm">Profile</a>
+        <a href="{% url 'chat:conversation-view' user.username %}" class="btn btn-sm">Chat</a>
       </div>
-
     </div>
     {% endfor %}
 
   {% elif query %}
-    <div class="center" style="padding:2rem;">
-      <div style="color:var(--muted);font-size:14px;">No user found with "{{ query }}" 😕</div>
+    <div class="center" style="padding:2.5rem 1rem;">
+      <div style="font-size:2rem;margin-bottom:10px;">🔍</div>
+      <div class="muted" style="font-size:14px;">No user found with "{{ query }}" 😕</div>
     </div>
 
   {% else %}
-    <div class="center" style="padding:2rem;">
-      <div style="color:var(--muted);font-size:14px;">Type a username to search 👆</div>
+    <div class="center" style="padding:2.5rem 1rem;">
+      <div style="font-size:2rem;margin-bottom:10px;">👆</div>
+      <div class="muted" style="font-size:14px;">Type a username to search</div>
     </div>
   {% endif %}
+
+  <div class="divider"></div>
+  <a href="{% url 'chat:home-view' %}" class="btn btn-outline btn-block">← Back to Chats</a>
 
 </div>
 {% endblock %}

@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}MyApp{% endblock %}</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 
 <style>
 *{
@@ -16,39 +16,70 @@ box-sizing:border-box;
 }
 
 :root{
---bg:#0d0d0f;
---surface:#161618;
---border:#2a2a2e;
+--bg:#0d0d12;
+--surface:#17171f;
+--surface-2:#1e1e28;
+--border:#2a2a35;
 --accent:#7c6dfa;
+--accent-2:#5eead4;
 --accent-soft:#a89dfc;
 --text:#f0eff5;
---muted:#888794;
+--muted:#8b8a99;
+--muted-2:#5f5e6b;
 --danger:#f96b6b;
+--success:#4ade80;
+--warning:#fbbf24;
+--online:#4ade80;
+--offline:#6b7280;
+--radius:16px;
+--shadow:0 12px 32px rgba(0,0,0,0.45);
 }
 
 body{
 font-family:'Sora',sans-serif;
-background:var(--bg);
+background:
+  radial-gradient(1000px 500px at 80% -10%, rgba(124,109,250,0.16), transparent 60%),
+  radial-gradient(800px 400px at 0% 100%, rgba(94,234,212,0.08), transparent 60%),
+  var(--bg);
 color:var(--text);
 min-height:100vh;
+display:flex;
+flex-direction:column;
 }
 
+a{color:var(--accent-soft);}
+
+/* ===== Navbar ===== */
 nav{
-height:62px;
-background:var(--surface);
+height:64px;
+background:rgba(23,23,31,0.85);
+backdrop-filter:blur(12px);
+-webkit-backdrop-filter:blur(12px);
 border-bottom:1px solid var(--border);
-padding:0 2rem;
+padding:0 1.5rem;
 display:flex;
 align-items:center;
 justify-content:space-between;
+position:sticky;
+top:0;
+z-index:100;
 }
 
 .nav-brand{
 text-decoration:none;
 font-family:'Space Mono',monospace;
-font-size:1.1rem;
-color:var(--accent-soft);
+font-size:1.15rem;
+color:var(--text);
 font-weight:700;
+display:flex;
+align-items:center;
+gap:8px;
+}
+
+.nav-brand .logo-dot{
+width:14px;height:14px;border-radius:50%;
+background:linear-gradient(135deg,var(--accent),var(--accent-2));
+box-shadow:0 0 12px rgba(124,109,250,0.8);
 }
 
 .nav-brand span{
@@ -57,37 +88,76 @@ color:var(--accent);
 
 .nav-links{
 display:flex;
-gap:10px;
+gap:8px;
 align-items:center;
 }
 
 .nav-links a{
 text-decoration:none;
 padding:8px 14px;
-border-radius:8px;
+border-radius:10px;
 font-size:14px;
+transition:all .15s ease;
 }
+
+.nav-links a.btn-ghost:hover{color:var(--text);background:var(--surface-2);}
 
 .btn-primary{
-background:var(--accent);
-color:white;
+background:linear-gradient(135deg,var(--accent),#6a5af0);
+color:white !important;
+box-shadow:0 4px 16px rgba(124,109,250,0.35);
 }
 
-.btn-ghost{
-color:var(--muted);
-}
+.btn-primary:hover{filter:brightness(1.08);}
+
+.btn-ghost{color:var(--muted);}
 
 .btn-danger{
-border:1px solid var(--danger);
-color:var(--danger);
+border:1px solid rgba(249,107,107,0.4);
+color:var(--danger) !important;
 }
 
+.btn-danger:hover{background:rgba(249,107,107,0.1);}
+
+.nav-user{
+display:flex;align-items:center;gap:8px;text-decoration:none;
+color:var(--muted);padding:4px 10px;border-radius:10px;
+}
+
+.nav-user:hover{background:var(--surface-2);color:var(--text);}
+
+.nav-avatar{
+width:34px;height:34px;border-radius:50%;object-fit:cover;
+border:2px solid var(--accent);
+}
+
+.nav-avatar-placeholder{
+width:34px;height:34px;border-radius:50%;
+background:linear-gradient(135deg,var(--accent),var(--accent-2));
+display:flex;align-items:center;justify-content:center;
+font-weight:700;color:white;font-size:14px;
+}
+
+/* ===== Layout ===== */
 main{
-min-height:calc(100vh - 62px);
+flex:1;
+min-height:calc(100vh - 64px);
 display:flex;
 justify-content:center;
-align-items:center;
-padding:2rem;
+align-items:flex-start;
+padding:2rem 1.25rem;
+width:100%;
+}
+
+.page-wrap{
+width:100%;
+max-width:560px;
+animation:fadeUp .35s ease;
+}
+
+@keyframes fadeUp{
+from{opacity:0;transform:translateY(8px);}
+to{opacity:1;transform:translateY(0);}
 }
 
 .card{
@@ -95,39 +165,50 @@ width:100%;
 max-width:420px;
 background:var(--surface);
 border:1px solid var(--border);
-border-radius:16px;
+border-radius:var(--radius);
 padding:2rem;
+box-shadow:var(--shadow);
 }
 
-input{
+.card h2{
+font-size:1.3rem;
+margin-bottom:4px;
+letter-spacing:-0.01em;
+}
+
+.card-header{
+display:flex;align-items:center;gap:10px;margin-bottom:6px;
+}
+
+.card-header .mini-badge{
+font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--accent-soft);
+letter-spacing:0.08em;
+}
+
+/* ===== Forms ===== */
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px;}
+
+input, textarea, select{
 width:100%;
-padding:12px;
+padding:12px 14px;
 background:var(--bg);
 border:1px solid var(--border);
-border-radius:8px;
-color:white;
-margin-top:6px;
-}
-
-label{
+border-radius:10px;
+color:var(--text);
+font-family:inherit;
 font-size:14px;
-color:var(--muted);
+outline:none;
+transition:border-color .15s ease, box-shadow .15s ease;
 }
 
-.form-group{
-margin-bottom:16px;
+input:focus, textarea:focus{
+border-color:var(--accent);
+box-shadow:0 0 0 3px rgba(124,109,250,0.18);
 }
 
-button{
-width:100%;
-padding:12px;
-border:none;
-border-radius:8px;
-background:var(--accent);
-color:white;
-cursor:pointer;
-font-weight:600;
-}
+input::placeholder, textarea::placeholder{color:var(--muted-2);}
+
+.form-group{margin-bottom:16px;}
 
 .grid-2{
 display:grid;
@@ -135,36 +216,153 @@ grid-template-columns:1fr 1fr;
 gap:12px;
 }
 
-.center{
-text-align:center;
-}
-
-.sub{
-color:var(--muted);
-margin-bottom:20px;
+button, .btn{
+width:100%;
+padding:12px 16px;
+border:none;
+border-radius:10px;
+background:linear-gradient(135deg,var(--accent),#6a5af0);
+color:white;
+cursor:pointer;
+font-weight:600;
+font-family:inherit;
 font-size:14px;
+transition:filter .15s ease, transform .05s ease;
+box-shadow:0 4px 16px rgba(124,109,250,0.3);
 }
 
-/* Nav profile pic */
-.nav-avatar{
-width:34px;
-height:34px;
-border-radius:50%;
-object-fit:cover;
-border:2px solid var(--accent);
-}
+button:hover, .btn:hover{filter:brightness(1.08);}
+button:active, .btn:active{transform:translateY(1px);}
 
-.nav-avatar-placeholder{
-width:34px;
-height:34px;
-border-radius:50%;
-background:var(--accent);
+.btn-block{width:100%;text-align:center;display:block;}
+.btn-sm{padding:8px 12px;font-size:13px;border-radius:8px;}
+.btn-outline{
+background:transparent;
+border:1px solid var(--border);
+color:var(--muted);
+box-shadow:none;
+}
+.btn-outline:hover{color:var(--text);border-color:var(--muted);filter:none;background:var(--surface-2);}
+
+/* Password visibility toggle */
+.input-wrap{position:relative;}
+.input-wrap input{padding-right:44px;}
+.input-wrap .toggle-btn{
+position:absolute;right:6px;top:50%;transform:translateY(-50%);
+background:none;border:none;cursor:pointer;color:var(--muted);
+font-size:16px;padding:6px;border-radius:8px;width:auto;
+}
+.input-wrap .toggle-btn:hover{background:var(--surface-2);color:var(--text);}
+
+/* ===== Alerts ===== */
+.alert{
+padding:12px 14px;
+border-radius:10px;
+font-size:13.5px;
+margin-bottom:16px;
 display:flex;
 align-items:center;
-justify-content:center;
-font-weight:700;
-color:white;
-font-size:14px;
+gap:8px;
+line-height:1.45;
+}
+
+.alert-success{
+background:rgba(74,222,128,0.12);
+border:1px solid rgba(74,222,128,0.35);
+color:var(--success);
+}
+
+.alert-error{
+background:rgba(249,107,107,0.12);
+border:1px solid rgba(249,107,107,0.35);
+color:var(--danger);
+}
+
+.alert-info{
+background:rgba(124,109,250,0.12);
+border:1px solid rgba(124,109,250,0.35);
+color:var(--accent-soft);
+}
+
+/* ===== Misc ===== */
+.center{text-align:center;}
+.sub{color:var(--muted);margin-bottom:20px;font-size:14px;}
+.muted{color:var(--muted);}
+.divider{height:1px;background:var(--border);margin:1.25rem 0;}
+.auth-alt{margin-top:16px;text-align:center;font-size:13.5px;color:var(--muted);}
+.auth-alt a{text-decoration:none;font-weight:600;}
+
+/* Chat row (home/search) */
+.chat-user-row{
+display:flex;align-items:center;gap:12px;
+padding:14px;border-radius:14px;
+border:1px solid var(--border);
+margin-bottom:10px;
+background:var(--surface);
+text-decoration:none;
+color:var(--text);
+transition:border-color .15s ease, transform .1s ease, background .15s ease;
+}
+
+.chat-user-row:hover{
+border-color:var(--accent);
+background:var(--surface-2);
+transform:translateX(3px);
+}
+
+.avatar{
+width:46px;height:46px;border-radius:50%;object-fit:cover;
+flex-shrink:0;
+}
+
+.avatar-placeholder{
+width:46px;height:46px;border-radius:50%;
+background:linear-gradient(135deg,var(--accent),#5a4bd4);
+display:flex;align-items:center;justify-content:center;
+font-weight:700;color:white;font-size:16px;flex-shrink:0;
+}
+
+.status-dot{
+width:12px;height:12px;border-radius:50%;
+border:2px solid var(--surface);
+}
+
+.chat-presence-dot{position:absolute;bottom:0;right:0;border-color:var(--surface);}
+
+.chat-unread-badge{
+background:linear-gradient(135deg,#3b82f6,#60a5fa);
+color:#fff;border-radius:999px;padding:2px 8px;
+font-size:11px;font-weight:700;min-width:22px;text-align:center;
+}
+
+.badge-plain{
+background:var(--surface-2);border:1px solid var(--border);
+color:var(--muted);border-radius:999px;padding:2px 8px;font-size:11px;
+}
+
+/* Footer */
+footer{
+padding:1.25rem;
+text-align:center;
+color:var(--muted-2);
+font-size:12.5px;
+border-top:1px solid var(--border);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
+
+/* Responsive */
+@media (max-width:560px){
+nav{padding:0 1rem;}
+main{padding:1.25rem 1rem;}
+.grid-2{grid-template-columns:1fr;}
+.nav-user span{display:none;}
+.nav-links a{padding:8px 10px;}
+.card{padding:1.5rem;}
 }
 </style>
 
@@ -172,7 +370,7 @@ font-size:14px;
 <body>
 
 <nav>
-  <a href="{% url 'home-view' %}" class="nav-brand"><span>//</span> MyApp</a>
+  <a href="{% url 'home-view' %}" class="nav-brand"><span class="logo-dot"></span>// MyApp</a>
 
   <div class="nav-links">
     {% if user.is_authenticated %}
@@ -180,7 +378,7 @@ font-size:14px;
       <a href="{% url 'chat:home-view' %}" class="btn-ghost">💬 Chats</a>
 
       <!-- Profile Link with pic -->
-      <a href="{% url 'profile-view' %}" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--muted);padding:4px 10px;border-radius:8px;">
+      <a href="{% url 'profile-view' %}" class="nav-user">
         {% with profile=user.profilepic %}
           {% if profile and profile.profile_pic %}
             <img src="{{ profile.profile_pic.url }}" class="nav-avatar">
@@ -200,9 +398,13 @@ font-size:14px;
 </nav>
 
 <main>
+<div class="page-wrap">
 {% block content %}
 {% endblock %}
+</div>
 </main>
+
+<footer>MyApp · Real-time chat built with Django &amp; Channels</footer>
 
 </body>
 </html>

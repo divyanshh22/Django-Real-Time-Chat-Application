@@ -2,7 +2,7 @@ import asyncio
 import websockets
 import json
 
-async def test():
+async def run_ws_check():
     try:
         uri = 'ws://127.0.0.1:8000/ws/chat/testuser/'
         async with websockets.connect(uri) as ws:
@@ -13,4 +13,5 @@ async def test():
     except Exception as e:
         print('Error:', e)
 
-asyncio.run(test())
+if __name__ == '__main__':
+    asyncio.run(run_ws_check())
